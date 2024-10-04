@@ -76,15 +76,12 @@ class MainWindow : JFrame() {
         val fonts = ButtonGroup()
         for (fontSize in FONT_SIZES) {
             val item = JRadioButtonMenuItem("$fontSize pt Font")
-            item.addActionListener {
-                val font = Font(Font.SANS_SERIF, Font.PLAIN, fontSize)
-                leftText.font = font
-                rightText.font = font
-            }
+            item.addActionListener { setTextFont(fontSize) }
             fonts.add(item)
             fontMenu.add(item)
             if (fontSize == DEFAULT_FONT_SIZE) {
                 item.isSelected = true
+                setTextFont(fontSize)
             }
         }
         val settingsMenu = JMenu("Settings")
@@ -117,6 +114,12 @@ class MainWindow : JFrame() {
 
         add(toolBar, BorderLayout.NORTH)
 
+    }
+
+    private fun setTextFont(fontSize: Int) {
+        val font = Font(Font.SANS_SERIF, Font.PLAIN, fontSize)
+        leftText.font = font
+        rightText.font = font
     }
 
     private fun setKeY() {
@@ -210,12 +213,16 @@ class MainWindow : JFrame() {
 
         val fileChooser = JFileChooser()
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            filename = fileChooser.selectedFile.absolutePath
-            title = "$TITLE - $filename"
-            modified = false
-            leftText.text = fileChooser.selectedFile.readText()
-            rightText.text = ""
+            load(fileChooser.selectedFile.absolutePath)
         }
+    }
+
+    fun load(filename: String) {
+        leftText.text = java.io.File(filename).readText()
+        this.filename = filename
+        title = "$TITLE - $filename"
+        modified = false
+        rightText.text = ""
     }
 
     private fun save() {
@@ -259,16 +266,17 @@ class MouseClickAdapter(val function: (MouseEvent) -> Unit) : MouseAdapter() {
     }
 }
 
-fun main() {
+fun main(args: Array<String>) {
     SwingUtilities.invokeLater {
         val mainWindow = MainWindow()
         mainWindow.isVisible = true
+        if(args.size > 0) mainWindow.load(args[0])
     }
 }
 
 fun loadPreambles(): Map<String, String> {
     return mapOf(
-        "rephrase" to
+        "Rephrase" to
                 "You are an editor for a computer science journal. " +
                 "You are an expert on Formal Methods in Computer Science, in particular in logics and deduction. " +
                 "Your job is it to improve scientific quality and the language of text. " +
@@ -276,7 +284,7 @@ fun loadPreambles(): Map<String, String> {
                 "You do not repeat the query presented to you. " +
                 "You keep all latex or markdown annotations unchanged. " +
                 "You prefer British over American English.",
-        "check" to "You are an editor for a computer science journal. " +
+        "Check" to "You are an editor for a computer science journal. " +
                 "You are an expert on Formal Methods in Computer Science, in particular in logics and deduction. " +
                 "Your job is it to improve scientific quality and the language of text. " +
                 "Do not add new content to the text, but only spellcheck text and make sure the English grammar is correct. " +
