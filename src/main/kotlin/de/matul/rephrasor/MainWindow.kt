@@ -1,6 +1,7 @@
 package de.matul.rephrasor
 
 import de.matul.rephrasor.de.matul.rephrasor.Diffing
+import de.uka.ilkd.key.util.PreferenceSaver
 import java.awt.*
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -30,8 +31,11 @@ class MainWindow : JFrame() {
     var modified = false
     var filename: String? = null
 
+    val prefSaver = PreferenceSaver(Preferences.userNodeForPackage(MainWindow::class.java))
+
     init {
         title = TITLE
+        name = "mainWindow"
         setSize(800, 600)
         defaultCloseOperation = DO_NOTHING_ON_CLOSE
         layout = BorderLayout()
@@ -58,6 +62,7 @@ class MainWindow : JFrame() {
 
         val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, JScrollPane(leftText), JScrollPane(rightText))
         splitPane.dividerLocation = 400
+        splitPane.name = "splitPane"
         add(splitPane, BorderLayout.CENTER)
 
         // Create Menu Bar
@@ -100,6 +105,7 @@ class MainWindow : JFrame() {
             button.addActionListener { callAI(preamble) }
             toolBar.add(button)
         }
+        toolBar.add(JToolBar.Separator())
         val clearButton = JButton("Clear")
         clearButton.addActionListener {
             if(hilighting != null)
@@ -111,9 +117,13 @@ class MainWindow : JFrame() {
         val saveButton = JButton("Save")
         saveButton.addActionListener { save() }
         toolBar.add(saveButton)
+        val reloadButton = JButton("Reload")
+        reloadButton.addActionListener { reload() }
+        toolBar.add(reloadButton)
 
         add(toolBar, BorderLayout.NORTH)
 
+        prefSaver.load(this)
     }
 
     private fun setTextFont(fontSize: Int) {
@@ -188,6 +198,7 @@ class MainWindow : JFrame() {
                     return
                 }
             }
+            prefSaver.save(this)
             System.exit(0)
         } else {
             super.processWindowEvent(e)
@@ -219,13 +230,31 @@ class MainWindow : JFrame() {
 
     fun load(filename: String) {
         leftText.text = java.io.File(filename).readText()
+        leftText.caretPosition = 0
         this.filename = filename
         title = "$TITLE - $filename"
         modified = false
         rightText.text = ""
     }
 
-    private fun save() {
+    private fun reload() {
+        val filename = filename
+        if (filename != null) {
+            if (modified) {
+                val result = JOptionPane.showConfirmDialog(this,
+                    "Input has been changed. Lose changes reloading?",
+                    "Unsaved Changes", JOptionPane.YES_NO_CANCEL_OPTION)
+                if (result != JOptionPane.YES_OPTION) {
+                    return
+                }
+            }
+
+            load(filename)
+        }
+    }
+
+
+        private fun save() {
         val filename = this.filename
         if (filename == null) {
             saveAs()
@@ -248,7 +277,7 @@ class MainWindow : JFrame() {
     fun legalEditPos(offset: Int): Boolean {
         val hl = hilighting
         if(hl != null) {
-            if (offset <= hl.start || offset >= hl.end) {
+            if (offset < hl.start || offset > hl.end) {
                 return false
             }
         }
@@ -273,27 +302,6 @@ fun main(args: Array<String>) {
         if(args.size > 0) mainWindow.load(args[0])
     }
 }
-
-fun loadPreambles(): Map<String, String> {
-    return mapOf(
-        "Rephrase" to
-                "You are an editor for a computer science journal. " +
-                "You are an expert on Formal Methods in Computer Science, in particular in logics and deduction. " +
-                "Your job is it to improve scientific quality and the language of text. " +
-                "Do not add new content to the text, but rephrase text such that it sounds more like typical scientific texts of the formal methods domain. " +
-                "You do not repeat the query presented to you. " +
-                "You keep all latex or markdown annotations unchanged. " +
-                "You prefer British over American English.",
-        "Check" to "You are an editor for a computer science journal. " +
-                "You are an expert on Formal Methods in Computer Science, in particular in logics and deduction. " +
-                "Your job is it to improve scientific quality and the language of text. " +
-                "Do not add new content to the text, but only spellcheck text and make sure the English grammar is correct. " +
-                "You do not repeat the query presented to you. " +
-                "You keep all latex or markdown annotations unchanged. " +
-                "You prefer British over American English."
-    )
-}
-
 
 class MyDocumentFilter(val mw: MainWindow): DocumentFilter() {
     override fun insertString(fb: FilterBypass?, offset: Int, string: String?, attr: AttributeSet?) {
