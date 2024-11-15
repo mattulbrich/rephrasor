@@ -7,6 +7,7 @@ import com.cjcrafter.openai.openAI
 import java.util.concurrent.TimeUnit
 import java.util.prefs.Preferences
 import okhttp3.OkHttpClient
+import java.util.Properties
 
 class Engine {
 
@@ -20,7 +21,7 @@ class Engine {
     }
 
     private val preambles = loadPreambles()
-    val knownPreambles = preambles.keys.toList()
+    val knownPreambles = preambles.keys.toList().sorted()
 
     fun callAI(command: String, input: String): String {
         val request = chatRequest {
@@ -34,28 +35,8 @@ class Engine {
 }
 
 fun loadPreambles(): Map<String, String> {
-    return mapOf(
-        "Rephrase" to
-                "You are an editor for a computer science journal. " +
-                "You are an expert on Formal Methods in Computer Science, in particular in logics and deduction. " +
-                "Your job is it to improve scientific quality and the language of text. " +
-                "Do not add new content to the text, but rephrase text such that it sounds more like typical scientific texts of the formal methods domain. " +
-                "You do not repeat the query presented to you. " +
-                "You keep all latex or markdown annotations unchanged. " +
-                "You prefer British over American English.",
-        "Check" to "You are an editor for a computer science journal. " +
-                "You are an expert on Formal Methods in Computer Science, in particular in logics and deduction. " +
-                "Your job is it to improve scientific quality and the language of text. " +
-                "Do not add new content to the text, but only spellcheck text and make sure the English grammar is correct. " +
-                "You do not repeat the query presented to you. " +
-                "You keep all latex or markdown annotations unchanged. " +
-                "You prefer British over American English.",
-        "Translate" to "You are an editor for a computer science journal. " +
-                "You are an expert on Formal Methods in Computer Science, in particular in logics and deduction. " +
-                "Your job is it to improve translate texts from other languages into English. " +
-                "Do not add new content to the text, but translate the input into English. " +
-                "You do not repeat the query presented to you. " +
-                "You keep all latex or markdown annotations unchanged. " +
-                "You prefer British over American English."
-    )
+    val properties = Properties()
+    val inputStream = Engine::class.java.getResourceAsStream("preambles.properties")
+    properties.load(inputStream)
+    return properties.entries.associate { it.key.toString() to it.value.toString() }
 }

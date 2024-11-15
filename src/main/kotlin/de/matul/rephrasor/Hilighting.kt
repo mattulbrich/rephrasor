@@ -75,8 +75,23 @@ class Hilighting(val leftText: JTextArea, tokens: List<Diffing.Token>, allAction
         markups = markups.filter { it != markup }
     }
 
+    fun clearMarkups() {
+        markups = emptyList()
+    }
+
     fun refresh() {
         uninstall()
+        install()
+    }
+
+    fun replaceAll(text: String) {
+        leftText.document.remove(start, end - start)
+        leftText.document.insertString(start,text, null)
+    }
+
+    fun updateMarkingsFrom(leftText: JTextArea, tokens: List<Diffing.Token>, allActions: MutableList<Diffing.TokenAction>) {
+        uninstall()
+        markups = computeMarkups(allActions, tokens)
         install()
     }
 
@@ -84,25 +99,3 @@ class Hilighting(val leftText: JTextArea, tokens: List<Diffing.Token>, allAction
 
 data class Markup(val start: Int, val end: Int, val replacement: String)
 
-//private fun computeTokenPos(text: String, start: Int, end: Int): List<Int> {
-//    val result = mutableListOf<Int>()
-//    var pos = start
-//    // skip spaces
-//    var wasSpace = true;
-//    while(pos < end) {
-//        if(wasSpace) {
-//            if(text[pos] != ' ') {
-//                result.add(pos)
-//                wasSpace = false
-//            }
-//        } else {
-//            if(text[pos] == ' ') {
-//                wasSpace = true
-//            }
-//        }
-//        pos++;
-//    }
-//
-//    return result
-//}
-//
