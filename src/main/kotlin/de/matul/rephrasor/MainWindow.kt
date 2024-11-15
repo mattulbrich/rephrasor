@@ -3,6 +3,8 @@ package de.matul.rephrasor
 import de.matul.rephrasor.de.matul.rephrasor.Diffing
 import de.uka.ilkd.key.util.PreferenceSaver
 import java.awt.*
+import java.awt.event.ActionEvent
+import java.awt.event.ActionListener
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.WindowEvent
@@ -100,20 +102,36 @@ class MainWindow : JFrame() {
 
         // Create Tool Bar
         val toolBar = JToolBar()
+        var no = 1
         for (preamble in preambles) {
             val button = JButton(preamble)
-            button.addActionListener { callAI(preamble) }
+            addActionListeners(button, "alt " + (no++)) { callAI(preamble) }
             toolBar.add(button)
         }
         toolBar.add(JToolBar.Separator())
         val clearButton = JButton("Clear")
-        clearButton.addActionListener {
+        addActionListeners(clearButton, "alt 0") {
             if(hilighting != null)
                 hilighting!!.uninstall()
             hilighting = null
             rightText.text = ""
         }
         toolBar.add(clearButton)
+
+        val recheckButton = JButton("Recheck")
+        addActionListeners(recheckButton, "alt 0") {
+            if(hilighting != null) {
+                localComp()
+            }
+        }
+        toolBar.add(recheckButton)
+
+        val copyButton = JButton("Copy")
+        copyButton.addActionListener {
+            val hl = hilighting
+            if(hl != null) hl.replaceAll(rightText.text)
+        }
+        toolBar.add(copyButton)
         val saveButton = JButton("Save")
         saveButton.addActionListener { save() }
         toolBar.add(saveButton)
@@ -124,6 +142,17 @@ class MainWindow : JFrame() {
         add(toolBar, BorderLayout.NORTH)
 
         prefSaver.load(this)
+    }
+
+    private fun addActionListeners(button: JButton, keystroke: String, al: ActionListener) {
+        button.addActionListener(al)
+        button.inputMap.put(KeyStroke.getKeyStroke(keystroke), "doClick")
+        leftText.inputMap.put(KeyStroke.getKeyStroke(keystroke), "doClick")
+        button.actionMap.put("doClick", object : AbstractAction() {
+            override fun actionPerformed(e: ActionEvent) {
+                button.doClick()
+            }
+        })
     }
 
     private fun setTextFont(fontSize: Int) {
@@ -152,6 +181,34 @@ class MainWindow : JFrame() {
                 hl.refresh()
             }
         }
+    }
+
+    // TODO unify with callAI
+    private fun localComp() {
+        val start = leftText.selectionStart
+        val end = leftText.selectionEnd
+        val input = leftText.text.substring(start, end)
+        val t1 = Diffing.tokenize(input)
+        val s1 = Diffing.toSentences(t1)
+
+        val start2 = rightText.selectionStart
+        val end2 = rightText.selectionEnd
+        val output = rightText.text.substring(start2, end2)
+        val t2 = Diffing.tokenize(output)
+        val s2 = Diffing.toSentences(t2)
+
+        val allActions = mutableListOf<Diffing.TokenAction>()
+        for (i in s1.indices.intersect(s2.indices)) {
+            println("Sentence 1: " + s1[i])
+            println("Sentence 2: " + s2[i])
+            val actions = Diffing.minEditDistanceWithActions(s1[i], s2[i])
+            println("Actions: $actions")
+            val consolidated = Diffing.consolidateActions(actions)
+            println("Consolidated: " + consolidated)
+            allActions.addAll(consolidated)
+        }
+        val hl = hilighting!!
+        hl.updateMarkingsFrom(leftText, t1, allActions)
     }
 
     private fun callAI(command: String) {

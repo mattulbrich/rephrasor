@@ -22,7 +22,7 @@ object Diffing {
         val result = mutableListOf<Token>()
         val sb = StringBuilder()
         for (pos in 0 until text.length) {
-            if(Character.isSpaceChar(text[pos])) {
+            if(Character.isWhitespace(text[pos])) {
                 if(sb.isNotEmpty()) {
                     result.add(Token(pos - sb.length, sb.toString()))
                     sb.clear()
@@ -130,7 +130,7 @@ object Diffing {
     fun consolidateActions(actions: List<Pair<EditAction, String>>): List<TokenAction> {
         val result = mutableListOf<TokenAction>()
         var tokenCount = 0
-        var replacement = StringBuilder()
+        val replacement = StringBuilder()
         var lastType: EditAction? = null
 
         for (action in actions) {
