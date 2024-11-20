@@ -3,11 +3,9 @@ package de.matul.rephrasor
 import de.matul.rephrasor.de.matul.rephrasor.Diffing
 import de.uka.ilkd.key.util.PreferenceSaver
 import java.awt.*
-import java.awt.event.ActionEvent
-import java.awt.event.ActionListener
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
-import java.awt.event.WindowEvent
+import java.awt.event.*
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.prefs.Preferences
 import javax.swing.*
 import javax.swing.event.DocumentEvent
@@ -26,7 +24,7 @@ class MainWindow : JFrame() {
     private var rightText: JTextArea
     private var leftText: JTextArea
 
-    private val engine = Engine()
+    internal val engine = Engine()
     private val preambles = engine.knownPreambles
     private var hilighting: Hilighting? = null
 
@@ -214,12 +212,36 @@ class MainWindow : JFrame() {
     private fun callAI(command: String) {
         var start = leftText.selectionStart
         var end = leftText.selectionEnd
-        if(start == end) {
+        if (start == end) {
             start = 0;
             end = leftText.text.length;
         }
         val input = leftText.text.substring(start, end)
-        val output =  engine.callAI(command, input)
+
+        val progress = JOptionPane(
+            "Contacting AI",
+            JOptionPane.INFORMATION_MESSAGE,
+            JOptionPane.DEFAULT_OPTION,
+            null,
+            arrayOf<Any>("Cancel"),
+            null
+        )
+        val dialog: JDialog = progress.createDialog(this, "AI")
+
+        val thread = object : Thread("AI Call") {
+            override fun run() {
+                val output = engine.callAI(command, input)
+                SwingUtilities.invokeLater { callAICont(input, output, start, end) }
+                dialog.isVisible = false
+            }
+        }
+        thread.start()
+        dialog.isVisible = true
+        thread.interrupt()
+    }
+
+    private fun callAICont(input: String, output: String, start: Int, end: Int) {
+
         rightText.text = output
 
         val t1 = Diffing.tokenize(input)
@@ -357,6 +379,7 @@ fun main(args: Array<String>) {
         val mainWindow = MainWindow()
         mainWindow.isVisible = true
         if(args.size > 0) mainWindow.load(args[0])
+        if(args.size > 1) mainWindow.engine.fakeAnswer = Files.readString(Paths.get(args[1]))
     }
 }
 

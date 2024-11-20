@@ -17,13 +17,20 @@ class Engine {
 
     val openai = openAI {
         apiKey(key)
-        client(OkHttpClient().newBuilder().readTimeout(100, TimeUnit.SECONDS).build())
+        client(OkHttpClient().newBuilder().readTimeout(120, TimeUnit.SECONDS).build())
     }
+
+    var fakeAnswer: String? = null
 
     private val preambles = loadPreambles()
     val knownPreambles = preambles.keys.toList().sorted()
 
     fun callAI(command: String, input: String): String {
+        val fakeAnswer = fakeAnswer
+        if(fakeAnswer != null) {
+            return fakeAnswer
+        }
+
         val request = chatRequest {
             model("gpt-4o-mini")
             addMessage(preambles[command]!!.toSystemMessage())
