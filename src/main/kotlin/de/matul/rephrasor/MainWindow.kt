@@ -21,6 +21,7 @@ val DEFAULT_FONT_SIZE = 16
 
 class MainWindow : JFrame() {
 
+    private var editPrompt: Boolean = false
     private var rightText: JTextArea
     private var leftText: JTextArea
 
@@ -59,6 +60,7 @@ class MainWindow : JFrame() {
         rightText.wrapStyleWord = true
         rightText.lineWrap = true
         rightText.isEditable = false
+        rightText.addMouseListener(MouseClickAdapter { mouseRight(it) })
 
         val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, JScrollPane(leftText), JScrollPane(rightText))
         splitPane.dividerLocation = 400
@@ -116,14 +118,6 @@ class MainWindow : JFrame() {
         }
         toolBar.add(clearButton)
 
-        val recheckButton = JButton("Recheck")
-        addActionListeners(recheckButton, "alt 0") {
-            if(hilighting != null) {
-                localComp()
-            }
-        }
-        toolBar.add(recheckButton)
-
         val copyButton = JButton("Copy")
         copyButton.addActionListener {
             val hl = hilighting
@@ -136,7 +130,13 @@ class MainWindow : JFrame() {
         val reloadButton = JButton("Reload")
         reloadButton.addActionListener { reload() }
         toolBar.add(reloadButton)
-
+        
+        toolBar.addSeparator()
+        
+        val editPromptButton = JToggleButton("Edit Prompt")
+        editPromptButton.addActionListener { editPrompt = editPromptButton.isSelected }
+        toolBar.add(editPromptButton)
+        
         add(toolBar, BorderLayout.NORTH)
 
         prefSaver.load(this)
@@ -170,43 +170,30 @@ class MainWindow : JFrame() {
     private fun mouse(e: MouseEvent) {
         val hl = hilighting
         if(SwingUtilities.isRightMouseButton(e) && hl != null) {
-            val pos = leftText.viewToModel(Point(e.x, e.y))
-            val markup = hl.findMarkup(pos)
-            if(markup != null) {
-                leftText.document.remove(markup.start, markup.end - markup.start)
-                leftText.document.insertString(markup.start, markup.replacement, null)
-                hl.clearMarkup(markup)
+            val pos = leftText.viewToModel2D(Point(e.x, e.y))
+            if(e.isControlDown) {
+                hl.beginIndicator = pos
                 hl.refresh()
+            } else {
+                val markup = hl.findMarkup(pos)
+                if (markup != null) {
+                    leftText.document.remove(markup.start, markup.end - markup.start)
+                    leftText.document.insertString(markup.start, markup.replacement, null)
+                    hl.clearMarkup(markup)
+                    hl.refresh()
+                }
             }
         }
     }
 
-    // TODO unify with callAI
-    private fun localComp() {
-        val start = leftText.selectionStart
-        val end = leftText.selectionEnd
-        val input = leftText.text.substring(start, end)
-        val t1 = Diffing.tokenize(input)
-        val s1 = Diffing.toSentences(t1)
-
-        val start2 = rightText.selectionStart
-        val end2 = rightText.selectionEnd
-        val output = rightText.text.substring(start2, end2)
-        val t2 = Diffing.tokenize(output)
-        val s2 = Diffing.toSentences(t2)
-
-        val allActions = mutableListOf<Diffing.TokenAction>()
-        for (i in s1.indices.intersect(s2.indices)) {
-            println("Sentence 1: " + s1[i])
-            println("Sentence 2: " + s2[i])
-            val actions = Diffing.minEditDistanceWithActions(s1[i], s2[i])
-            println("Actions: $actions")
-            val consolidated = Diffing.consolidateActions(actions)
-            println("Consolidated: " + consolidated)
-            allActions.addAll(consolidated)
+    private fun mouseRight(e: MouseEvent) {
+        val hl = hilighting
+        if(SwingUtilities.isRightMouseButton(e) && e.isControlDown && hl != null && hl.beginIndicator >= 0) {
+            val pos = rightText.viewToModel2D(Point(e.x, e.y))
+            val input = leftText.text.substring(hl.beginIndicator, hl.end)
+            val output = rightText.text.substring(pos)
+            makeHighlighter(input, output, hl.beginIndicator, hl.end)
         }
-        val hl = hilighting!!
-        hl.updateMarkingsFrom(leftText, t1, allActions)
     }
 
     private fun callAI(command: String) {
@@ -231,8 +218,7 @@ class MainWindow : JFrame() {
         val thread = object : Thread("AI Call") {
             override fun run() {
                 val output = engine.callAI(command, input)
-                SwingUtilities.invokeLater { callAICont(input, output, start, end) }
-                dialog.isVisible = false
+                SwingUtilities.invokeLater { makeHighlighter(input, output, start, end); dialog.isVisible = false }
             }
         }
         thread.start()
@@ -240,8 +226,11 @@ class MainWindow : JFrame() {
         thread.interrupt()
     }
 
-    private fun callAICont(input: String, output: String, start: Int, end: Int) {
+    private fun makeHighlighter(input: String, output: String, start: Int, end: Int) {
+        makeHighlighter(input, output, start, end, start, end)
+    }
 
+    private fun makeHighlighter(input: String, output: String, start: Int, end: Int, hiLightStart: Int, hiLightEnd: Int) {
         rightText.text = output
 
         val t1 = Diffing.tokenize(input)
@@ -262,8 +251,9 @@ class MainWindow : JFrame() {
         if(hl != null) {
             hl.uninstall();
         }
-        hilighting = Hilighting(leftText, t1, allActions, start, end)
+        hilighting = Hilighting(leftText, t1, allActions, hiLightStart, hiLightEnd)
     }
+
 
     override fun processWindowEvent(e: WindowEvent) {
         if (e.id == WindowEvent.WINDOW_CLOSING) {

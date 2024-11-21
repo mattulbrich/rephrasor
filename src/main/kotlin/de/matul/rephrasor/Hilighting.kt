@@ -3,13 +3,21 @@ package de.matul.rephrasor
 import de.matul.rephrasor.de.matul.rephrasor.Diffing
 import java.awt.Color
 import javax.swing.JTextArea
-import javax.swing.text.DefaultHighlighter
+import javax.swing.text.BadLocationException
 import javax.swing.text.DefaultHighlighter.DefaultHighlightPainter
 
 val OUTSIDE = DefaultHighlightPainter(Color.lightGray)
 val CHANGE = DefaultHighlightPainter(Color.green.brighter())
+val BEGIN = DefaultHighlightPainter(Color.red)
 
 class Hilighting(val leftText: JTextArea, tokens: List<Diffing.Token>, allActions: MutableList<Diffing.TokenAction>, val start: Int, var end: Int) {
+
+    var beginIndicator: Int = -1
+        set(value) {
+            field = value
+            clearMarkups()
+            refresh()
+        }
 
     private var markups: List<Markup>
 
@@ -20,11 +28,24 @@ class Hilighting(val leftText: JTextArea, tokens: List<Diffing.Token>, allAction
 
     private fun install() {
         for (markup in markups) {
-            println(markup)
-            leftText.highlighter.addHighlight(markup.start, markup.end, CHANGE)
+            // println(markup)
+            addHighlight(markup.start, markup.end, CHANGE)
         }
-        leftText.highlighter.addHighlight(0, start-1, OUTSIDE)
-        leftText.highlighter.addHighlight(end+1, leftText.text.length, OUTSIDE)
+        if(start > 0)
+            addHighlight(0, start-1, OUTSIDE)
+        if(end < leftText.text.length)
+            addHighlight(end+1, leftText.text.length, OUTSIDE)
+        if(beginIndicator != -1)
+            addHighlight(beginIndicator, beginIndicator+1, BEGIN)
+    }
+
+    private fun addHighlight(start: Int, end: Int, painter: DefaultHighlightPainter) {
+        try {
+            leftText.highlighter.addHighlight(start, end, painter)
+        } catch (bl: BadLocationException) {
+            println("Bad location exception: " + bl.offsetRequested() + " with length " + leftText.text.length)
+            bl.printStackTrace()
+        }
     }
 
     fun uninstall() {
