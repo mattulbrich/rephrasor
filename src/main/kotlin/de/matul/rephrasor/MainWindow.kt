@@ -13,6 +13,7 @@ import javax.swing.event.DocumentListener
 import javax.swing.text.AbstractDocument
 import javax.swing.text.AttributeSet
 import javax.swing.text.DocumentFilter
+import javax.swing.undo.UndoManager
 
 
 val TITLE = "Rephrasor"
@@ -24,6 +25,7 @@ class MainWindow : JFrame() {
     private var editPrompt: Boolean = false
     private var rightText: JTextArea
     private var leftText: JTextArea
+    private val undoManager = UndoManager()
 
     internal val engine = Engine()
     private val preambles = engine.knownPreambles
@@ -55,6 +57,8 @@ class MainWindow : JFrame() {
         (leftText.document as AbstractDocument).addDocumentListener(DocListener(this))
         leftText.addMouseListener(MouseClickAdapter { mouse(it) })
         leftText.toolTipText = ""
+        // Add DocumentListener to track changes for undo/redo
+        leftText.document.addUndoableEditListener { undoManager.addEdit(it.edit) }
 
         rightText = JTextArea()
         rightText.wrapStyleWord = true
@@ -71,14 +75,31 @@ class MainWindow : JFrame() {
         val menuBar = JMenuBar()
         val fileMenu = JMenu("File")
         val open = JMenuItem("Open")
+        open.accelerator = KeyStroke.getKeyStroke("control O")
         open.addActionListener { open() }
         fileMenu.add(open)
+        val reload = JMenuItem("Reload")
+        reload.addActionListener { reload() }
+        fileMenu.add(reload)
         val save = JMenuItem("Save")
         save.addActionListener { save() }
+        save.accelerator = KeyStroke.getKeyStroke("control S")
         fileMenu.add(save)
         val saveAs = JMenuItem("Save As ...")
         saveAs.addActionListener { saveAs() }
         fileMenu.add(saveAs)
+        fileMenu.addSeparator()
+        val exit = JMenuItem("Exit")
+        exit.addActionListener { processWindowEvent(WindowEvent(this, WindowEvent.WINDOW_CLOSING)) }
+        exit.accelerator = KeyStroke.getKeyStroke("control Q")
+        fileMenu.add(exit)
+
+        val editMen = JMenu("Edit")
+        val undo = JMenuItem("Undo")
+        undo.addActionListener { if (undoManager.canUndo()) undoManager.undo() }
+        undo.accelerator = KeyStroke.getKeyStroke("control Z")
+        editMen.add(undo)
+
         val fontMenu = JMenu("Font")
         val fonts = ButtonGroup()
         for (fontSize in FONT_SIZES) {
