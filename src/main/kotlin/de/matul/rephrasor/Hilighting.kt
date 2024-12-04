@@ -1,14 +1,14 @@
 package de.matul.rephrasor
 
-import de.matul.rephrasor.de.matul.rephrasor.Diffing
 import java.awt.Color
 import javax.swing.JTextArea
 import javax.swing.text.BadLocationException
 import javax.swing.text.DefaultHighlighter.DefaultHighlightPainter
 
 val OUTSIDE = DefaultHighlightPainter(Color.lightGray)
-val CHANGE = DefaultHighlightPainter(Color.green.brighter())
+val CHANGE = DefaultHighlightPainter(Color(0x00, 0x80, 0x00, 0x40))
 val BEGIN = DefaultHighlightPainter(Color.red)
+val RIGHT = DefaultHighlightPainter(Color(0x00, 0x00, 0x80, 0x40))
 
 class Hilighting(val leftText: JTextArea, tokens: List<Diffing.Token>, allActions: MutableList<Diffing.TokenAction>, val start: Int, var end: Int) {
 
@@ -68,7 +68,7 @@ class Hilighting(val leftText: JTextArea, tokens: List<Diffing.Token>, allAction
                     val t2 = tokenPositions[tokenCnt - 1]
                     result.add(Markup(t1.from + start, t2.after + start, action.replacement))
                 } else {
-                    result.add(Markup(t1.from + start - 1, t1.from + start, " ${action.replacement} "))
+                    result.add(Markup(t1.from + start - 1, t1.from + start, action.replacement.withSpaces()))
                 }
             }
         }
@@ -116,7 +116,13 @@ class Hilighting(val leftText: JTextArea, tokens: List<Diffing.Token>, allAction
         install()
     }
 
+    fun highlightRight(rightText: JTextArea, range: TokenRange?) {
+        rightText.highlighter.removeAllHighlights()
+        if(range != null)
+            rightText.highlighter.addHighlight(range.fromIndex, range.endIndex+1, RIGHT)
+    }
+
 }
 
-data class Markup(val start: Int, val end: Int, val replacement: String)
+data class Markup(val start: Int, val end: Int, val replacement: TokenRange)
 

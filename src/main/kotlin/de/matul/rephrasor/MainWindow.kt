@@ -1,6 +1,5 @@
 package de.matul.rephrasor
 
-import de.matul.rephrasor.de.matul.rephrasor.Diffing
 import de.uka.ilkd.key.util.PreferenceSaver
 import java.awt.*
 import java.awt.event.*
@@ -12,7 +11,9 @@ import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 import javax.swing.text.AbstractDocument
 import javax.swing.text.AttributeSet
+import javax.swing.text.DefaultHighlighter.DefaultHighlightPainter
 import javax.swing.text.DocumentFilter
+import javax.swing.undo.AbstractUndoableEdit
 import javax.swing.undo.UndoManager
 
 
@@ -44,18 +45,13 @@ class MainWindow : JFrame() {
         layout = BorderLayout()
 
         // Create Text Areas
-        leftText = object : JTextArea() {
-            override fun getToolTipText(event: MouseEvent): String? {
-                val pos = viewToModel(Point(event.x, event.y))
-                val markup = hilighting?.findMarkup(pos)
-                return markup?.replacement // super.getToolTipText(event)
-            }
-        }
+        leftText = JTextArea()
         leftText.wrapStyleWord = true
         leftText.lineWrap = true
         (leftText.document as AbstractDocument).documentFilter = MyDocumentFilter(this)
         (leftText.document as AbstractDocument).addDocumentListener(DocListener(this))
         leftText.addMouseListener(MouseClickAdapter { mouse(it) })
+        leftText.addMouseMotionListener(MouseMovedAdapter { moveMouse(it) })
         leftText.toolTipText = ""
         // Add DocumentListener to track changes for undo/redo
         leftText.document.addUndoableEditListener { undoManager.addEdit(it.edit) }
@@ -99,6 +95,10 @@ class MainWindow : JFrame() {
         undo.addActionListener { if (undoManager.canUndo()) undoManager.undo() }
         undo.accelerator = KeyStroke.getKeyStroke("control Z")
         editMen.add(undo)
+        val redo = JMenuItem("Redo")
+        redo.addActionListener { if (undoManager.canRedo()) undoManager.redo() }
+        redo.accelerator = KeyStroke.getKeyStroke("control Y")
+        editMen.add(redo)
 
         val fontMenu = JMenu("Font")
         val fonts = ButtonGroup()
@@ -116,7 +116,9 @@ class MainWindow : JFrame() {
         val keyItem = JMenuItem("Set OpenAI Key")
         keyItem.addActionListener { setKeY() }
         settingsMenu.add(keyItem)
+        
         menuBar.add(fileMenu)
+        menuBar.add(editMen)
         menuBar.add(fontMenu)
         menuBar.add(settingsMenu)
         jMenuBar = menuBar
@@ -198,11 +200,31 @@ class MainWindow : JFrame() {
             } else {
                 val markup = hl.findMarkup(pos)
                 if (markup != null) {
+//                    undoManager.addEdit(ReplacementEdit(leftText, markup.start,
+//                        markup.replacement.toString(),
+//                        leftText.text.substring(markup.start, markup.end)))
                     leftText.document.remove(markup.start, markup.end - markup.start)
-                    leftText.document.insertString(markup.start, markup.replacement, null)
+                    leftText.document.insertString(markup.start, markup.replacement.toString(), null)
                     hl.clearMarkup(markup)
                     hl.refresh()
                 }
+            }
+        }
+    }
+
+
+    private fun moveMouse(e: MouseEvent) {
+        val hl = hilighting
+        if(hl != null) {
+            val pos = leftText.viewToModel2D(Point(e.x, e.y))
+            val markup = hl.findMarkup(pos)
+            if (markup != null) {
+                val range = markup.replacement
+                leftText.toolTipText = range.toString()
+                hl.highlightRight(rightText, range)
+            } else {
+                leftText.toolTipText = null
+                hl.highlightRight(rightText, null)
             }
         }
     }
@@ -385,6 +407,12 @@ class MouseClickAdapter(val function: (MouseEvent) -> Unit) : MouseAdapter() {
     }
 }
 
+class MouseMovedAdapter(val function: (MouseEvent) -> Unit) : MouseMotionAdapter() {
+    override fun mouseMoved(e: MouseEvent?) {
+        if(e != null) function(e);
+    }
+}
+
 fun main(args: Array<String>) {
     SwingUtilities.invokeLater {
         val mainWindow = MainWindow()
@@ -436,4 +464,18 @@ class DocListener(val mw: MainWindow) : DocumentListener {
         // apparently no indexes changed ...
     }
 
+}
+
+class ReplacementEdit(val ta: JTextArea, val offset: Int, val newtext: String, val oldtext: String): AbstractUndoableEdit() {
+    override fun undo() {
+        super.undo()
+        ta.document.remove(offset, newtext.length)
+        ta.document.insertString(offset, oldtext, null)
+    }
+
+    override fun redo() {
+        super.redo()
+        ta.document.remove(offset, oldtext.length)
+        ta.document.insertString(offset, newtext, null)
+    }
 }
