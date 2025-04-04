@@ -1,3 +1,6 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+
 plugins {
     kotlin("jvm") version "2.0.20"
     java
@@ -30,3 +33,21 @@ kotlin {
 application {
     mainClass.set("de.matul.rephrasor.MainWindowKt")
 }
+
+tasks.register("generateVersionResource") {
+    val outputDir = file("${layout.buildDirectory}/generated/resources")
+    val outputFile = file("$outputDir/version.txt")
+
+    doLast {
+        outputDir.mkdirs()
+        val currentDate = SimpleDateFormat("yyyy-MM-dd HH:mm").format(Date())
+        outputFile.writeText(currentDate)
+    }
+}
+
+tasks.processResources {
+    dependsOn("generateVersionResource")
+    from("${layout.buildDirectory}/generated/resources") {
+        into("")
+    }
+ }

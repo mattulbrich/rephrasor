@@ -15,6 +15,13 @@ class Engine {
         Preferences.userNodeForPackage(Engine::class.java).get("openai-key", "<undefined>")
     }
 
+    var alignForSentences: Boolean =
+        Preferences.userNodeForPackage(Engine::class.java).getBoolean("align-for-sentences", false)
+        set(value) {
+            field = value
+            Preferences.userNodeForPackage(Engine::class.java).putBoolean("align-for-sentences", value)
+        }
+
     val openai = openAI {
         apiKey(key)
         client(OkHttpClient().newBuilder().readTimeout(120, TimeUnit.SECONDS).build())
@@ -25,7 +32,7 @@ class Engine {
     private val preambles = loadPreambles()
     val knownPreambles = preambles.keys.toList().sorted()
 
-    fun callAI(command: String, input: String): String {
+    fun callAI(command: String, context: String, input: String): String {
         val fakeAnswer = fakeAnswer
         if(fakeAnswer != null) {
             return fakeAnswer
@@ -34,6 +41,7 @@ class Engine {
         val request = chatRequest {
             model("gpt-4o-mini")
             addMessage(preambles[command]!!.toSystemMessage())
+            addMessage(context.toSystemMessage())
             addMessage(input.toUserMessage())
         }
         val response = openai.createChatCompletion(request)

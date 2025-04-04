@@ -132,7 +132,7 @@ object Diffing {
             for (j in 1..len2) {
                 if (list1[i - 1].text == list2[j - 1].text) {
                     dp[i][j] = dp[i - 1][j - 1]
-                    actions[i][j] = COPY(list2[i - 1])
+                    actions[i][j] = COPY(list2[j - 1])
                 } else {
                     val insert = dp[i][j - 1] + 1
                     val delete = dp[i - 1][j] + 1

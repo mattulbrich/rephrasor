@@ -1,8 +1,10 @@
 package de.matul.rephrasor
 
 import de.uka.ilkd.key.util.PreferenceSaver
+import okio.Source
 import java.awt.*
 import java.awt.event.*
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.prefs.Preferences
@@ -31,6 +33,12 @@ class MainWindow : JFrame() {
     internal val engine = Engine()
     private val preambles = engine.knownPreambles
     private var hilighting: Hilighting? = null
+
+    var ignorePragmas =
+        Preferences.userNodeForPackage(Engine::class.java).getBoolean("ignore-pragmas", false)
+        set(value) {
+            Preferences.userNodeForPackage(Engine::class.java).putBoolean("ignore-pragmas", value)
+        }
 
     var modified = false
     var filename: String? = null
@@ -116,7 +124,10 @@ class MainWindow : JFrame() {
         val keyItem = JMenuItem("Set OpenAI Key")
         keyItem.addActionListener { setKeY() }
         settingsMenu.add(keyItem)
-        
+
+        val sentencesItem = JCheckBoxMenuItem("Align Sentences", engine.alignForSentences)
+        sentencesItem.addActionListener { engine.alignForSentences = sentencesItem.isSelected }
+
         menuBar.add(fileMenu)
         menuBar.add(editMen)
         menuBar.add(fontMenu)
@@ -260,13 +271,26 @@ class MainWindow : JFrame() {
 
         val thread = object : Thread("AI Call") {
             override fun run() {
-                val output = engine.callAI(command, input)
+                val output = engine.callAI(command, makeContext(), input)
                 SwingUtilities.invokeLater { makeHighlighter(input, output, start, end); dialog.isVisible = false }
             }
         }
         thread.start()
         dialog.isVisible = true
         thread.interrupt()
+    }
+
+    private fun makeContext(): String {
+        if(ignorePragmas) return ""
+        val pattern = "<rephrasor:context-file>(.*?)</>".toRegex()
+        val matchResult = pattern.find(leftText.text)
+        return if (matchResult != null) {
+            val filename = matchResult.groupValues[1]
+            val fileContent = java.io.File(filename).readText()
+            fileContent
+        } else {
+            ""
+        }
     }
 
     private fun makeHighlighter(input: String, output: String, start: Int, end: Int) {
@@ -277,8 +301,8 @@ class MainWindow : JFrame() {
         rightText.text = output
 
         val t1 = Diffing.tokenize(input)
-        val s1 = Diffing.toSentences(t1)
-        val s2 = Diffing.toSentences(Diffing.tokenize(output))
+        val s1 = if(engine.alignForSentences) Diffing.toSentences(t1) else listOf(t1)
+        val s2 = if(engine.alignForSentences) Diffing.toSentences(Diffing.tokenize(output)) else listOf(Diffing.tokenize(output))
         val allActions = mutableListOf<Diffing.TokenAction>()
         for (i in s1.indices.intersect(s2.indices)) {
             println("Sentence 1: " + s1[i])
@@ -413,7 +437,15 @@ class MouseMovedAdapter(val function: (MouseEvent) -> Unit) : MouseMotionAdapter
     }
 }
 
+fun readVersionResource(): String {
+    val classLoader = Thread.currentThread().contextClassLoader
+    classLoader.getResourceAsStream("version.txt").use { inputStream ->
+        return inputStream?.bufferedReader(StandardCharsets.UTF_8)?.readText() ?: "Resource not found"
+    }
+}
+
 fun main(args: Array<String>) {
+    println("Rephrasor (Version: ${readVersionResource()})")
     SwingUtilities.invokeLater {
         val mainWindow = MainWindow()
         mainWindow.isVisible = true
