@@ -127,6 +127,11 @@ class MainWindow : JFrame() {
 
         val sentencesItem = JCheckBoxMenuItem("Align Sentences", engine.alignForSentences)
         sentencesItem.addActionListener { engine.alignForSentences = sentencesItem.isSelected }
+        settingsMenu.add(sentencesItem)
+
+        val ignorePragmasItem = JCheckBoxMenuItem("Ignore Pragmas", ignorePragmas)
+        ignorePragmasItem.addActionListener { ignorePragmas = ignorePragmasItem.isSelected }
+        settingsMenu.add(ignorePragmasItem)
 
         menuBar.add(fileMenu)
         menuBar.add(editMen)
