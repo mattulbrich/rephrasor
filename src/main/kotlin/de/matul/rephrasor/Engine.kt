@@ -32,15 +32,21 @@ class Engine {
     private val preambles = loadPreambles()
     val knownPreambles = preambles.keys.toList().sorted()
 
-    fun callAI(command: String, context: String, input: String): String {
+    fun getPreamble(command: String): String {
+        return preambles[command] ?: throw IllegalArgumentException("Unknown command: $command")
+    }
+
+    fun callAI(command: String, context: String, input: String, preambleOverride: String?): String {
         val fakeAnswer = fakeAnswer
         if(fakeAnswer != null) {
             return fakeAnswer
         }
 
+        val preamble = preambleOverride ?: getPreamble(command)
+
         val request = chatRequest {
             model("gpt-4o-mini")
-            addMessage(preambles[command]!!.toSystemMessage())
+            addMessage(preamble.toSystemMessage())
             addMessage(context.toSystemMessage())
             addMessage(input.toUserMessage())
         }

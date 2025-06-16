@@ -1,8 +1,9 @@
 package de.matul.rephrasor
 
 import de.uka.ilkd.key.util.PreferenceSaver
-import okio.Source
-import java.awt.*
+import java.awt.BorderLayout
+import java.awt.Font
+import java.awt.Point
 import java.awt.event.*
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -13,7 +14,6 @@ import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 import javax.swing.text.AbstractDocument
 import javax.swing.text.AttributeSet
-import javax.swing.text.DefaultHighlighter.DefaultHighlightPainter
 import javax.swing.text.DocumentFilter
 import javax.swing.undo.AbstractUndoableEdit
 import javax.swing.undo.UndoManager
@@ -264,6 +264,16 @@ class MainWindow : JFrame() {
         }
         val input = leftText.text.substring(start, end)
 
+        val preambleOverride = if(editPrompt) {
+            val ta = JTextArea(15, 80)
+            ta.text = engine.getPreamble(command)
+            ta.lineWrap = true
+            when (JOptionPane.showConfirmDialog(null, JScrollPane(ta), "Edit prompt", JOptionPane.OK_CANCEL_OPTION)) {
+                JOptionPane.OK_OPTION -> ta.getText()
+                else -> return
+            }
+        } else null
+
         val progress = JOptionPane(
             "Contacting AI",
             JOptionPane.INFORMATION_MESSAGE,
@@ -276,7 +286,7 @@ class MainWindow : JFrame() {
 
         val thread = object : Thread("AI Call") {
             override fun run() {
-                val output = engine.callAI(command, makeContext(), input)
+                val output = engine.callAI(command, makeContext(), input, preambleOverride)
                 SwingUtilities.invokeLater { makeHighlighter(input, output, start, end); dialog.isVisible = false }
             }
         }
