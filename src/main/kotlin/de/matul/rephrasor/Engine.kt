@@ -45,6 +45,10 @@ class Engine {
         val preamble = preambleOverride ?: getPreamble(command)
 
         val request = chatRequest {
+            fun addMessage(message: com.cjcrafter.openai.chat.ChatMessage) {
+                println("Adding message ${message.role}:\n${message.content}")
+                this.addMessage(message)
+            }
             model("gpt-4o-mini")
             addMessage(preamble.toSystemMessage())
             addMessage(context.toSystemMessage())
