@@ -70,7 +70,9 @@ class MainWindow : JFrame() {
         rightText.isEditable = false
         rightText.addMouseListener(MouseClickAdapter { mouseRight(it) })
 
-        val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, JScrollPane(leftText), JScrollPane(rightText))
+        val leftScrollPane = JScrollPane(leftText)
+        leftScrollPane.setRowHeaderView(LineNumberComponent(leftText))
+        val splitPane = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftScrollPane, JScrollPane(rightText))
         splitPane.dividerLocation = 400
         splitPane.name = "splitPane"
         add(splitPane, BorderLayout.CENTER)
@@ -268,6 +270,7 @@ class MainWindow : JFrame() {
             val ta = JTextArea(15, 80)
             ta.text = engine.getPreamble(command)
             ta.lineWrap = true
+            ta.wrapStyleWord = true
             when (JOptionPane.showConfirmDialog(null, JScrollPane(ta), "Edit prompt", JOptionPane.OK_CANCEL_OPTION)) {
                 JOptionPane.OK_OPTION -> ta.getText()
                 else -> return
