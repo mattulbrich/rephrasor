@@ -117,9 +117,15 @@ class Hilighting(val leftText: JTextArea, tokens: List<Diffing.Token>, allAction
     }
 
     fun highlightRight(rightText: JTextArea, range: TokenRange?) {
-        rightText.highlighter.removeAllHighlights()
-        if(range != null)
-            rightText.highlighter.addHighlight(range.fromIndex, range.endIndex+1, RIGHT)
+        try {
+            rightText.highlighter.removeAllHighlights()
+            if (range != null && range.isValid())
+                rightText.highlighter.addHighlight(range.fromIndex, range.endIndex + 1, RIGHT)
+        } catch (e: BadLocationException) {
+            println("call was: addHighlight(${range?.fromIndex}, ${range?.endIndex?.plus(1)}, RIGHT)")
+            println("Bad location $e (${e.offsetRequested()} for ${rightText.text.length})")
+            e.printStackTrace()
+        }
     }
 
 }

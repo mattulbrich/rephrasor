@@ -238,8 +238,10 @@ class MainWindow : JFrame() {
             val markup = hl.findMarkup(pos)
             if (markup != null) {
                 val range = markup.replacement
-                leftText.toolTipText = range.toString()
-                hl.highlightRight(rightText, range)
+                if(range.isValid()) {
+                    leftText.toolTipText = range.toString()
+                    hl.highlightRight(rightText, range)
+                }
             } else {
                 leftText.toolTipText = null
                 hl.highlightRight(rightText, null)
@@ -261,8 +263,14 @@ class MainWindow : JFrame() {
         var start = leftText.selectionStart
         var end = leftText.selectionEnd
         if (start == end) {
-            start = 0;
-            end = leftText.text.length;
+            val hl = hilighting
+            if(hl == null) {
+                start = 0;
+                end = leftText.text.length;
+            } else {
+                start = hl.start
+                end = hl.end
+            }
         }
         val input = leftText.text.substring(start, end)
 
@@ -300,15 +308,38 @@ class MainWindow : JFrame() {
 
     private fun makeContext(): String {
         if(ignorePragmas) return ""
-        val pattern = "<rephrasor:context-file>(.*?)</>".toRegex()
-        val matchResult = pattern.find(leftText.text)
-        return if (matchResult != null) {
-            val filename = matchResult.groupValues[1]
-            val fileContent = java.io.File(filename).readText()
-            fileContent
-        } else {
-            ""
+        val pattern = "<rephrasor:context-file>(.*?)</>|</?rephrasor:copy>|<rephrasor:add>(.*?)</>".toRegex()
+        var from = 0
+        val sb = StringBuilder()
+        var beginIndex = 0
+        while(true) {
+            val matchResult = pattern.find(leftText.text, from)
+            if (matchResult == null) break
+            when {
+                matchResult.value.startsWith("<rephrasor:context-file>") -> {
+                    val filename = matchResult.groupValues[1]
+                    val fileContent = java.io.File(filename).readText()
+                    sb.append(fileContent).append("\n\n")
+                }
+                matchResult.value.startsWith("<rephrasor:copy>") -> {
+                    beginIndex = matchResult.range.last + 1
+                }
+                matchResult.value.startsWith("</rephrasor:copy>") -> {
+                    val copiedText = leftText.text.substring(beginIndex, matchResult.range.first)
+                    if (copiedText.isNotEmpty()) {
+                        sb.append(copiedText).append("\n\n")
+                    }
+                }
+                matchResult.value.startsWith("<rephrasor:add>") -> {
+                    val additionalText = matchResult.groupValues[2]
+                    if (additionalText.isNotEmpty()) {
+                        sb.append(additionalText).append("\n\n")
+                    }
+                }
+            }
+            from = matchResult.range.last.plus(1)
         }
+        return sb.toString()
     }
 
     private fun makeHighlighter(input: String, output: String, start: Int, end: Int) {
@@ -408,7 +439,7 @@ class MainWindow : JFrame() {
     }
 
 
-        private fun save() {
+    private fun save() {
         val filename = this.filename
         if (filename == null) {
             saveAs()

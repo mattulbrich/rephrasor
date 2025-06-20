@@ -47,6 +47,8 @@ class TokenRange {
         result.endIndex = endIndex
         return result
     }
+
+    fun isValid(): Boolean = endIndex >= fromIndex
 }
 
 object Diffing {

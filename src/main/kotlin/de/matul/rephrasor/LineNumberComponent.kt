@@ -4,7 +4,9 @@ import java.awt.Color
 import java.awt.Dimension
 import java.awt.FontMetrics
 import java.awt.Graphics
+import java.awt.Graphics2D
 import java.awt.Point
+import java.awt.RenderingHints
 import java.awt.event.ComponentAdapter
 import java.awt.event.ComponentEvent
 import javax.swing.JComponent
@@ -54,6 +56,9 @@ class LineNumberComponent(private val textArea: JTextArea) : JComponent() {
         val clip = g.getClipBounds()
         val startOffset = textArea.viewToModel2D(Point(0, clip.y))
         val endOffset = textArea.viewToModel2D(Point(0, clip.y + clip.height))
+
+        val g2 = g as Graphics2D
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
 
         g.setColor(Color.GRAY)
         for (line in getLineAtOffset(startOffset)..getLineAtOffset(endOffset)) {
