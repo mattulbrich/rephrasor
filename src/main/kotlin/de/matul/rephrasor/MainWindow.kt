@@ -472,6 +472,11 @@ class MainWindow : JFrame() {
     fun updateHilights(pos: Int, len: Int) {
         hilighting?.updateHighlights(pos, len)
     }
+
+    fun moveLeftToLine(line: Int) {
+        leftText.caretPosition = leftText.getLineStartOffset(line - 1)
+        leftText.requestFocusInWindow()
+    }
 }
 
 class MouseClickAdapter(val function: (MouseEvent) -> Unit) : MouseAdapter() {
@@ -499,7 +504,18 @@ fun main(args: Array<String>) {
         val mainWindow = MainWindow()
         mainWindow.isVisible = true
         if(args.size > 0) mainWindow.load(args[0])
-        if(args.size > 1) mainWindow.engine.fakeAnswer = Files.readString(Paths.get(args[1]))
+        if(args.size > 1)
+            when {
+                args[1].startsWith("FAKE:") -> {
+                    mainWindow.engine.fakeAnswer = Files.readString(Paths.get(args[1]))
+                }
+                args[1].matches("\\+[0-9]+".toRegex()) -> {
+                    mainWindow.moveLeftToLine(args[1].substring(1).toInt())
+                }
+                else -> {
+                    throw IllegalArgumentException("Unknown second argument: ${args[1]}")
+                }
+            }
     }
 }
 
