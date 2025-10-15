@@ -26,6 +26,7 @@ val DEFAULT_FONT_SIZE = 16
 class MainWindow : JFrame() {
 
     private var editPrompt: Boolean = false
+    private var lastPrompt: Pair<String, String> = Pair("none", "")
     private var rightText: JTextArea
     private var leftText: JTextArea
     private val undoManager = UndoManager()
@@ -175,7 +176,7 @@ class MainWindow : JFrame() {
         toolBar.addSeparator()
         
         val editPromptButton = JToggleButton("Edit Prompt")
-        editPromptButton.addActionListener { editPrompt = editPromptButton.isSelected }
+        editPromptButton.addActionListener { editPrompt = editPromptButton.isSelected; lastPrompt = Pair("none", "") }
         toolBar.add(editPromptButton)
         
         add(toolBar, BorderLayout.NORTH)
@@ -276,11 +277,18 @@ class MainWindow : JFrame() {
 
         val preambleOverride = if(editPrompt) {
             val ta = JTextArea(15, 80)
-            ta.text = engine.getPreamble(command)
+            if(command == lastPrompt.first) {
+                ta.text = lastPrompt.second
+            } else {
+                ta.text = engine.getPreamble(command)
+            }
             ta.lineWrap = true
             ta.wrapStyleWord = true
             when (JOptionPane.showConfirmDialog(null, JScrollPane(ta), "Edit prompt", JOptionPane.OK_CANCEL_OPTION)) {
-                JOptionPane.OK_OPTION -> ta.getText()
+                JOptionPane.OK_OPTION -> {
+                    lastPrompt = Pair(command, ta.text)
+                    ta.getText()
+                }
                 else -> return
             }
         } else null
