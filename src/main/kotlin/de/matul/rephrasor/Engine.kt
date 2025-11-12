@@ -10,12 +10,14 @@ import java.util.prefs.Preferences
 import okhttp3.OkHttpClient
 import java.util.Properties
 
+data class ModelInfo(val baseUrl: String, val modelName: String)
+
 class Engine {
 
     companion object {
         val knownProviders = mapOf(
-            "kit" to "https://ki-toolbox.scc.kit.edu",
-            "openai" to "https://api.openai.com")
+            "kit" to ModelInfo("https://ki-toolbox.scc.kit.edu/api", "azure.gpt-5-mini"),
+            "openai" to ModelInfo("https://api.openai.com", "gpt-4o-mini"))
     }
 
     var currentProvider: String =
@@ -42,7 +44,8 @@ class Engine {
     private fun makeOpenAIClient(): OpenAI {
         return openAI {
             apiKey(key())
-            baseUrl(knownProviders[currentProvider] ?: throw IllegalArgumentException("Unknown provider: $currentProvider"))
+            baseUrl((knownProviders[currentProvider] ?: throw IllegalArgumentException("Unknown provider: $currentProvider")).baseUrl)
+            //
             
             client(OkHttpClient().newBuilder().readTimeout(120, TimeUnit.SECONDS).build())
         }
@@ -70,7 +73,8 @@ class Engine {
                 println("Adding message ${message.role}:\n${message.content}")
                 this.addMessage(message)
             }
-            model("gpt-4o-mini")
+            model(knownProviders[currentProvider]?.modelName
+                ?: throw IllegalArgumentException("Unknown provider: $currentProvider"))
             addMessage(preamble.toSystemMessage())
             addMessage(context.toSystemMessage())
             addMessage(input.toUserMessage())

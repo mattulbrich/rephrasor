@@ -318,8 +318,12 @@ class MainWindow : JFrame() {
 
         val thread = object : Thread("AI Call") {
             override fun run() {
-                val output = engine.callAI(command, makeContext(), input, preambleOverride)
-                SwingUtilities.invokeLater { makeHighlighter(input, output, start, end); dialog.isVisible = false }
+                try {
+                    val output = engine.callAI(command, makeContext(), input, preambleOverride)
+                    SwingUtilities.invokeLater { makeHighlighter(input, output, start, end); }
+                } finally {
+                    SwingUtilities.invokeLater { dialog.isVisible = false }
+                }
             }
         }
         thread.start()
