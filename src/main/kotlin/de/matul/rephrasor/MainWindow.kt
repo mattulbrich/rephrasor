@@ -124,7 +124,19 @@ class MainWindow : JFrame() {
             }
         }
         val settingsMenu = JMenu("Settings")
-        val keyItem = JMenuItem("Set OpenAI Key")
+
+        val providerGroup = ButtonGroup()
+        for (provider in Engine.knownProviders.keys) {
+            val item = JRadioButtonMenuItem("Provider: $provider")
+            item.isSelected = (provider == engine.currentProvider)
+            item.addActionListener {
+                engine.currentProvider = provider
+            }
+            providerGroup.add(item)
+            settingsMenu.add(item)
+        }
+
+        val keyItem = JMenuItem("Set provider Key")
         keyItem.addActionListener { setKeY() }
         settingsMenu.add(keyItem)
 
@@ -202,10 +214,11 @@ class MainWindow : JFrame() {
     }
 
     private fun setKeY() {
-        val oldVal = Preferences.userNodeForPackage(Engine::class.java).get("openai-key", "<undefined>")
-        val newVal = JOptionPane.showInputDialog("Enter your OpenAI API Key", oldVal)
+        val provider = engine.currentProvider
+        val oldVal = Preferences.userNodeForPackage(Engine::class.java).get("$provider-key", "<undefined>")
+        val newVal = JOptionPane.showInputDialog("Enter your $provider API Key", oldVal)
         if(newVal != null) {
-            Preferences.userNodeForPackage(Engine::class.java).put("openai-key", newVal)
+            Preferences.userNodeForPackage(Engine::class.java).put("$provider-key", newVal)
         }
     }
 

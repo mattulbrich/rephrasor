@@ -1,5 +1,6 @@
 package de.matul.rephrasor
 
+import com.cjcrafter.openai.OpenAI
 import com.cjcrafter.openai.chat.ChatMessage.Companion.toSystemMessage
 import com.cjcrafter.openai.chat.ChatMessage.Companion.toUserMessage
 import com.cjcrafter.openai.chat.chatRequest
@@ -11,8 +12,22 @@ import java.util.Properties
 
 class Engine {
 
-    private val key by lazy {
-        Preferences.userNodeForPackage(Engine::class.java).get("openai-key", "<undefined>")
+    companion object {
+        val knownProviders = mapOf(
+            "kit" to "https://ki-toolbox.scc.kit.edu",
+            "openai" to "https://api.openai.com")
+    }
+
+    var currentProvider: String =
+        Preferences.userNodeForPackage(Engine::class.java).get("provider", "openai")
+        set(value) {
+            field = value
+            Preferences.userNodeForPackage(Engine::class.java).put("provider", value)
+            client = makeOpenAIClient()
+        }
+
+    private fun key(): String {
+        return Preferences.userNodeForPackage(Engine::class.java).get("$currentProvider-key", "<undefined>")
     }
 
     var alignForSentences: Boolean =
@@ -22,9 +37,15 @@ class Engine {
             Preferences.userNodeForPackage(Engine::class.java).putBoolean("align-for-sentences", value)
         }
 
-    val openai = openAI {
-        apiKey(key)
-        client(OkHttpClient().newBuilder().readTimeout(120, TimeUnit.SECONDS).build())
+    private var client = makeOpenAIClient()
+
+    private fun makeOpenAIClient(): OpenAI {
+        return openAI {
+            apiKey(key())
+            baseUrl(knownProviders[currentProvider] ?: throw IllegalArgumentException("Unknown provider: $currentProvider"))
+            
+            client(OkHttpClient().newBuilder().readTimeout(120, TimeUnit.SECONDS).build())
+        }
     }
 
     var fakeAnswer: String? = null
@@ -54,7 +75,7 @@ class Engine {
             addMessage(context.toSystemMessage())
             addMessage(input.toUserMessage())
         }
-        val response = openai.createChatCompletion(request)
+        val response = client.createChatCompletion(request)
         return response.choices.last().message.content!!
     }
 }
