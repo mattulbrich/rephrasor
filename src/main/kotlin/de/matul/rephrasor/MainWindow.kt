@@ -502,6 +502,12 @@ class MainWindow : JFrame() {
         leftText.caretPosition = leftText.getLineStartOffset(line - 1)
         leftText.requestFocusInWindow()
     }
+
+    fun markLeftToLine(line: Int) {
+        val end = leftText.getLineEndOffset(line - 1)
+        leftText.select(leftText.caretPosition, end)
+        leftText.requestFocusInWindow()
+    }
 }
 
 class MouseClickAdapter(val function: (MouseEvent) -> Unit) : MouseAdapter() {
@@ -535,7 +541,13 @@ fun main(args: Array<String>) {
                     mainWindow.engine.fakeAnswer = Files.readString(Paths.get(args[1]))
                 }
                 args[1].matches("\\+[0-9]+".toRegex()) -> {
-                    mainWindow.moveLeftToLine(args[1].substring(1).toInt())
+                    val line = args[1].substring(1).toInt()
+                    mainWindow.moveLeftToLine(line)
+                    if(args[2].matches("\\+[0-9]+".toRegex())) {
+                        val lineEnd = args[2].substring(1).toInt()
+                        if(lineEnd > line)
+                        mainWindow.markLeftToLine(lineEnd)
+                    }
                 }
                 else -> {
                     throw IllegalArgumentException("Unknown second argument: ${args[1]}")
