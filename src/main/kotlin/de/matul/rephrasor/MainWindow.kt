@@ -321,6 +321,11 @@ class MainWindow : JFrame() {
                 try {
                     val output = engine.callAI(command, makeContext(), input, preambleOverride)
                     SwingUtilities.invokeLater { makeHighlighter(input, output, start, end); }
+                } catch (e: Exception) {
+                    SwingUtilities.invokeLater {
+                        dialog.isVisible = false
+                        JOptionPane.showMessageDialog(this@MainWindow, "Call error: ${e.message}", "Error", JOptionPane.ERROR_MESSAGE)
+                    }
                 } finally {
                     SwingUtilities.invokeLater { dialog.isVisible = false }
                 }

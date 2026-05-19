@@ -16,7 +16,8 @@ class Engine {
 
     companion object {
         val knownProviders = mapOf(
-            "kit" to ModelInfo("https://ki-toolbox.scc.kit.edu/api", "azure.gpt-5-mini"),
+            "kit-5-mini" to ModelInfo("https://ki-toolbox.scc.kit.edu/api", "azure.gpt-5-mini"),
+            "kit-5.4" to ModelInfo("https://ki-toolbox.scc.kit.edu/api", "azure.gpt-5.4"),
             "openai" to ModelInfo("https://api.openai.com", "gpt-4o-mini"))
     }
 
@@ -79,6 +80,7 @@ class Engine {
             addMessage(context.toSystemMessage())
             addMessage(input.toUserMessage())
         }
+
         val response = client.createChatCompletion(request)
         return response.choices.last().message.content!!
     }
