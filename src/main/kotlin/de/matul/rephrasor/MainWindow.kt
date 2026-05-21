@@ -1,7 +1,10 @@
 package de.matul.rephrasor
 
+import com.cjcrafter.openai.OpenAI
+import com.cjcrafter.openai.OpenAIImpl
 import de.uka.ilkd.key.util.PreferenceSaver
 import java.awt.BorderLayout
+import java.awt.Dimension
 import java.awt.Font
 import java.awt.Point
 import java.awt.event.*
@@ -18,7 +21,6 @@ import javax.swing.text.DocumentFilter
 import javax.swing.undo.AbstractUndoableEdit
 import javax.swing.undo.UndoManager
 
-
 val TITLE = "Rephrasor"
 val FONT_SIZES = listOf(11, 12, 14, 16, 18, 20)
 val DEFAULT_FONT_SIZE = 16
@@ -29,6 +31,7 @@ class MainWindow : JFrame() {
     private var lastPrompt: Pair<String, String> = Pair("none", "")
     private var rightText: JTextArea
     private var leftText: JTextArea
+    private var modelLabel: JLabel
     private val undoManager = UndoManager()
 
     internal val engine = Engine()
@@ -136,9 +139,13 @@ class MainWindow : JFrame() {
             settingsMenu.add(item)
         }
 
-        val keyItem = JMenuItem("Set provider Key")
-        keyItem.addActionListener { setKeY() }
+        val keyItem = JMenuItem("Config providers ...")
+        keyItem.addActionListener { configProviders() }
         settingsMenu.add(keyItem)
+
+        val modelItem = JMenuItem("Select model ... ")
+        modelItem.addActionListener { selectModel() }
+        settingsMenu.add(modelItem)
 
         val sentencesItem = JCheckBoxMenuItem("Align Sentences", engine.alignForSentences)
         sentencesItem.addActionListener { engine.alignForSentences = sentencesItem.isSelected }
@@ -190,10 +197,25 @@ class MainWindow : JFrame() {
         val editPromptButton = JToggleButton("Edit Prompt")
         editPromptButton.addActionListener { editPrompt = editPromptButton.isSelected; lastPrompt = Pair("none", "") }
         toolBar.add(editPromptButton)
-        
+
+        toolBar.addSeparator(Dimension(50,0))
+
+        modelLabel = JLabel("x:y")
+        updateModelLabel()
+        toolBar.add(modelLabel)
+
         add(toolBar, BorderLayout.NORTH)
 
         prefSaver.load(this)
+    }
+
+    private fun updateModelLabel() {
+        val provider = Engine.knownProviders[engine.currentProvider]
+        if(provider != null) {
+            modelLabel.text = "${provider.provider}:${provider.modelName ?: "<no model>"}"
+        } else {
+            modelLabel.text = "<no provider>"
+        }
     }
 
     private fun addActionListeners(button: JButton, keystroke: String, al: ActionListener) {
@@ -219,6 +241,32 @@ class MainWindow : JFrame() {
         val newVal = JOptionPane.showInputDialog("Enter your $provider API Key", oldVal)
         if(newVal != null) {
             Preferences.userNodeForPackage(Engine::class.java).put("$provider-key", newVal)
+        }
+    }
+
+    private fun configProviders() {
+        ProviderConfigDialog(this).isVisible = true
+        updateModelLabel()
+    }
+
+    private fun selectModel() {
+        try {
+            val provider = Engine.knownProviders[engine.currentProvider]
+                ?: throw IllegalArgumentException("Unknown provider: ${engine.currentProvider}")
+            val modelNames = engine.listModels()
+            val currentModel = engine.currentModel
+            val selectedModel = JOptionPane.showInputDialog(
+                this,
+                "Select model for provider ${provider.provider}", currentModel,
+                JOptionPane.PLAIN_MESSAGE, null,
+                modelNames.toTypedArray(), currentModel
+            )
+            if (selectedModel != null) {
+                engine.currentModel = selectedModel.toString()
+                updateModelLabel()
+            }
+        } catch (e: Exception) {
+            JOptionPane.showMessageDialog(this, e.message, "Error", JOptionPane.ERROR_MESSAGE)
         }
     }
 
