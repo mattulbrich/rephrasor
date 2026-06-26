@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit
 import java.util.prefs.Preferences
 import okhttp3.OkHttpClient
 import java.util.Properties
+import java.nio.charset.StandardCharsets
 
 // curl -X GET "https://ki-toolbox.scc.kit.edu/api/v1/models" -H "Authorization: Bearer sk-0f640707711e4a26bf79145ab7653aa2" -H "Content-Type: application/json"
 
@@ -174,6 +175,9 @@ class Engine {
 fun loadPreambles(): Map<String, String> {
     val properties = Properties()
     val inputStream = Engine::class.java.getResourceAsStream("preambles.properties")
-    properties.load(inputStream)
+    requireNotNull(inputStream) { "Missing resource: preambles.properties" }
+    inputStream.reader(StandardCharsets.UTF_8).use { reader ->
+        properties.load(reader)
+    }
     return properties.entries.associate { it.key.toString() to it.value.toString() }
 }
