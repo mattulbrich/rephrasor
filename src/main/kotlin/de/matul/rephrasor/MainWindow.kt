@@ -337,7 +337,8 @@ class MainWindow : JFrame() {
         val input = leftText.text.substring(start, end)
 
         val preambleOverride = if(editPrompt) {
-            val ta = JTextArea(15, 80)
+            val ta = JTextArea(15, 40)
+            ta.font = ta.font.deriveFont(ta.font.size + 3f)
             if(command == lastPrompt.first) {
                 ta.text = lastPrompt.second
             } else {
