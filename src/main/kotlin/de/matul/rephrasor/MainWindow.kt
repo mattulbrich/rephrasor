@@ -29,8 +29,8 @@ class MainWindow : JFrame() {
 
     private var editPrompt: Boolean = false
     private var lastPrompt: Pair<String, String> = Pair("none", "")
-    private var rightText: JTextArea
-    private var leftText: JTextArea
+    internal var rightText: JTextArea
+    internal var leftText: JTextArea
     private var modelLabel: JLabel
     private val undoManager = UndoManager()
 
@@ -113,6 +113,10 @@ class MainWindow : JFrame() {
         redo.addActionListener { if (undoManager.canRedo()) undoManager.redo() }
         redo.accelerator = KeyStroke.getKeyStroke("control Y")
         editMen.add(redo)
+        
+        val chatMenuItem = JMenuItem("Chat...")
+        chatMenuItem.addActionListener { openChat() }
+        editMen.add(chatMenuItem)
 
         val fontMenu = JMenu("Font")
         val fonts = ButtonGroup()
@@ -270,6 +274,24 @@ class MainWindow : JFrame() {
         }
     }
 
+    private fun openChat() {
+        var start = leftText.selectionStart
+        var end = leftText.selectionEnd
+        if (start == end) {
+            val hl = hilighting
+            if(hl == null) {
+                start = 0
+                end = leftText.text.length
+            } else {
+                start = hl.start
+                end = hl.end
+            }
+        }
+        val selectedText = leftText.text.substring(start, end)
+        val chatDialog = ChatDialog(this, selectedText)
+        chatDialog.isVisible = true
+    }
+
     private fun mouse(e: MouseEvent) {
         val hl = hilighting
         if(SwingUtilities.isRightMouseButton(e) && hl != null) {
@@ -421,11 +443,11 @@ class MainWindow : JFrame() {
         return sb.toString()
     }
 
-    private fun makeHighlighter(input: String, output: String, start: Int, end: Int) {
+    internal fun makeHighlighter(input: String, output: String, start: Int, end: Int) {
         makeHighlighter(input, output, start, end, start, end)
     }
 
-    private fun makeHighlighter(input: String, output: String, start: Int, end: Int, hiLightStart: Int, hiLightEnd: Int) {
+    internal fun makeHighlighter(input: String, output: String, start: Int, end: Int, hiLightStart: Int, hiLightEnd: Int) {
         rightText.text = output
 
         val t1 = Diffing.tokenize(input)

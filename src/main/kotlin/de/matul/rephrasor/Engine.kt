@@ -2,8 +2,10 @@ package de.matul.rephrasor
 
 import com.cjcrafter.openai.OpenAI
 import com.cjcrafter.openai.OpenAIImpl
+import com.cjcrafter.openai.chat.ChatMessage
 import com.cjcrafter.openai.chat.ChatMessage.Companion.toSystemMessage
 import com.cjcrafter.openai.chat.ChatMessage.Companion.toUserMessage
+import com.cjcrafter.openai.chat.ChatUser
 import com.cjcrafter.openai.chat.chatRequest
 import com.cjcrafter.openai.openAI
 import kotlinx.serialization.Serializable
@@ -24,6 +26,7 @@ data class ModelInfo(val provider: String, val baseUrl: String, val modelName: S
 data class ModelRespInfo(val id: String, val created: Long, val owned_by: String)
 @Serializable
 data class ModelListResponse(val data: List<ModelRespInfo>)
+data class ChatMessage(val role: String, val content: String)
 
 class Engine {
 
@@ -112,6 +115,13 @@ class Engine {
     private val preambles = loadPreambles()
     val knownPreambles = preambles.keys.toList().sorted()
 
+    private val chatRoles = loadChatRoles()
+    val knownChatRoles = chatRoles.keys.toList().sorted()
+
+    fun getChatRole(roleName: String): String {
+        return chatRoles[roleName] ?: throw IllegalArgumentException("Unknown chat role: $roleName")
+    }
+
     fun getPreamble(command: String): String {
         return preambles[command] ?: throw IllegalArgumentException("Unknown command: $command")
     }
@@ -135,6 +145,30 @@ class Engine {
             addMessage(preamble.toSystemMessage())
             addMessage(context.toSystemMessage())
             addMessage(input.toUserMessage())
+        }
+
+        val client = makeOpenAIClient()
+        val response = client.createChatCompletion(request)
+        return response.choices.last().message.content!!
+    }
+
+    fun callChat(messages: List<com.cjcrafter.openai.chat.ChatMessage>): String {
+        val fakeAnswer = fakeAnswer
+        if(fakeAnswer != null) {
+            return fakeAnswer
+        }
+
+        val request = chatRequest {
+            fun addMessage(message: com.cjcrafter.openai.chat.ChatMessage) {
+                println("Adding message ${message.role}:\n${message.content}")
+                this.addMessage(message)
+            }
+            val current = knownProviders[currentProvider] ?: throw IllegalArgumentException("Unknown provider: $currentProvider")
+            val modelName = current.modelName ?: throw IllegalArgumentException("Model name not specified for provider: $currentProvider")
+            model(modelName)
+            for (msg in messages) {
+                addMessage(msg)
+            }
         }
 
         val client = makeOpenAIClient()
@@ -176,6 +210,16 @@ fun loadPreambles(): Map<String, String> {
     val properties = Properties()
     val inputStream = Engine::class.java.getResourceAsStream("preambles.properties")
     requireNotNull(inputStream) { "Missing resource: preambles.properties" }
+    inputStream.reader(StandardCharsets.UTF_8).use { reader ->
+        properties.load(reader)
+    }
+    return properties.entries.associate { it.key.toString() to it.value.toString() }
+}
+
+fun loadChatRoles(): Map<String, String> {
+    val properties = Properties()
+    val inputStream = Engine::class.java.getResourceAsStream("chat_roles.properties")
+    requireNotNull(inputStream) { "Missing resource: chat_roles.properties" }
     inputStream.reader(StandardCharsets.UTF_8).use { reader ->
         properties.load(reader)
     }
