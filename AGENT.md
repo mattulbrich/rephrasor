@@ -34,6 +34,8 @@ Configurable providers store:
 
 They are persisted in the `Preferences` node for `Engine` under `provider-1`, `baseUrl-1`, `modelName-1`, `key-1`, and so on. `Engine.knownProviders` is recomputed from these entries, and `Engine.saveProviders` rewrites them.
 
+Note: `Engine.computeProviders()` currently assumes contiguous numbering starting at 1 and stops at the first missing index. If there is a gap (for example `provider-2` missing but `provider-3` present), later providers are ignored.
+
 Important invariants:
 
 - `Engine.currentProvider` must always refer to a key present in `knownProviders`.

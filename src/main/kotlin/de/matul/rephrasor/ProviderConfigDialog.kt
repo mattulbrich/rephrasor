@@ -32,7 +32,7 @@ class ProviderConfigDialog(owner: Frame) :
         val saveButton = JButton("Save")
         val cancelButton = JButton("Cancel")
         addButton.addActionListener {
-            tableModel.addRow(arrayOf("", "", ""))
+            tableModel.addRow(arrayOf("", "", "", ""))
         }
         removeButton.addActionListener {
             val row = providerTable.selectedRow
